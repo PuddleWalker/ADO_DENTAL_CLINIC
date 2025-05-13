@@ -1,23 +1,31 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Configuration;
+using System.Data;
+using static System.Console;
 
-//const string connectionString = "Data Source = DESKTOP-DGP3MV4; " +
-//                                "Integrated Security = true; " +
-//                                "Encrypt = false"; 
 string connectionString = ConfigurationManager.ConnectionStrings["DENTAL_CLINIC"].ToString();
-const string queryString = "use DENTAL_CLINIC; SELECT top (10) * from Dentist;";
 
+
+Write("Введите название страны: ");
+string? reg = ReadLine();
+// string? reg = "моск"; // для проверки - не чувствителен SQL у нас к регистру по умолчанию
+SqlParameter regParam = new("@reg", "%" + reg + "%");
+const string queryString = "SELECT DC.City from Dental_clinic DC " +
+                           "where DC.Country LIKE @reg";
+WriteLine(queryString);
 using SqlConnection connection = new(connectionString);
 SqlCommand command = new(queryString, connection);
+command.Parameters.Add(regParam);
 try
 {
     connection.Open();
-    SqlDataReader reader = command.ExecuteReader();
+    var reader = command.ExecuteReader();
     while (reader.Read())
     {
-        Console.WriteLine("\t{0}\t{1}\t{2}\t{3}", reader[0], reader[1], reader[2], reader[3]);
+        WriteLine(reader[0]);
     }
     reader.Close();
+    connection.Close(); // в принципе не надо, т.к. у нас using
 }
 catch (Exception ex)
 {
