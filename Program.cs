@@ -1,48 +1,53 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Data.Common;
-using Microsoft.Data.SqlClient;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 using static System.Console;
+using System.Configuration;
 
-WriteLine("\n  Выберите базу данных: ");
-WriteLine("  1. SQL Server Express");
-WriteLine("  2. SQLite");
-Write("  ");
-int choice = Convert.ToInt32(ReadLine());
-DbProviderFactory? factory = null;
-string cs;
-switch (choice)
+using (ApplicationContext db = new ApplicationContext())
 {
-    case 1:
-        factory = SqlClientFactory.Instance;
-        cs = ConfigurationManager.ConnectionStrings["DENTAL_CLINIC"].ToString();
-        break;
-    case 2:
-        factory = SqliteFactory.Instance;
-        cs = ConfigurationManager.ConnectionStrings["DENTAL_SQLite"].ConnectionString;
-        break;
-    default:
-        Console.WriteLine("  Некорректный выбор");
-        return;
+    // получаем объекты из бд и выводим на консоль
+    var dentists = db.Dentist.ToList();
+    WriteLine("Список объектов из БД:");
+    foreach (Dentist d in dentists)
+    {
+        Console.WriteLine($"{d.Id} - {d.Name?.Trim()} {d.Surname?.Trim()}");
+    }
+
+    // создаем два новых объекта User
+    WriteLine("Добавляем новых...");
+    Dentist andrew = new Dentist { Name = "Андрей", Surname = "Быков", SpecialityID = 4, CategoryID = 1, BeginDate = new DateTime(2002, 1, 13) };
+    Dentist dmitriy = new Dentist { Name = "Дмитрий", Surname = "Старцев", SpecialityID = 1, CategoryID = 2, BeginDate = new DateTime(2008, 12, 30) };
+
+    // добавляем их в бд
+    db.Dentist.Add(andrew);
+    db.Dentist.Add(dmitriy);
+    db.SaveChanges();
+    WriteLine("Объекты успешно сохранены");
+
+    // снова получаем объекты из бд и выводим на консоль
+    dentists = db.Dentist.ToList();
+    Console.WriteLine("Список объектов:");
+    foreach (Dentist d in dentists)
+    {
+        Console.WriteLine($"{d.Id} - {d.Name?.Trim()} {d.Surname?.Trim()}");
+    }
 }
-// создаем соединение и назначаем ему строку подключения
-DbConnection? con = factory.CreateConnection();
-con.ConnectionString = cs;
-
-DbCommand cmd = con.CreateCommand();
-cmd.CommandText = "select Name, Surname, City, Country from Dental_clinic as DC, Dentist as D " +
-                                   "where DC.Country like 'Russia%' and DC.DentistID = D.id";
-
-con.Open();
-
-using DbDataReader reader = cmd.ExecuteReader();
-while (reader.Read())
+public class Dentist
 {
-    Console.WriteLine("{0}{1}\t{2}\t{3}", reader["Name"], reader["Surname"], reader[2], reader[3]);
+    public int Id { get; set; } 
+    public string? Name { get; set; }
+    public string? Surname { get; set; }
+    public int CategoryID { get; set; }
+    public int SpecialityID { get; set; }
+    public DateTime? BeginDate { get; set; }
 }
-
-WriteLine("  Нажмите любую клавишу...");
-ReadKey();
-
-con.Close();
+public class ApplicationContext : DbContext
+{
+    string connectionString = ConfigurationManager.ConnectionStrings["DENTAL_First"].ToString();
+    public DbSet<Dentist> Dentist => Set<Dentist>();
+    public ApplicationContext() => Database.EnsureCreated();
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseSqlServer(connectionString);
+    }
+}
