@@ -1,42 +1,35 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using System.Data.Linq;
+using Microsoft.Data.SqlClient;
 using System.Configuration;
-using System.Data;
-using static System.Console;
+using ADO_DENTAL_CLINIC;
 
-namespace ADO_DENTAL_CLINIC
+namespace ADO_DENTAL_CLINIC_Two
 {
     internal class ProgramTwo
     {
-        public void MainTwo()
+        static void Main()
         {
+            var connectionString = ConfigurationManager.ConnectionStrings["DENTAL_CLINIC"].ToString();
+            SqlConnection connection = new(connectionString);
 
-            string connectionString = ConfigurationManager.ConnectionStrings["DENTAL_CLINIC"].ToString();
+            var dc = new DENTAL_ClassesDataContext(connection);
 
-
-            Write("Введите название страны: ");
-            string? reg = ReadLine();
-
-            using SqlConnection connection = new(connectionString);
-
-            const string sqlString = "CityName";
-            SqlCommand command = new(sqlString, connection);
-            command.CommandType = CommandType.StoredProcedure;
-            SqlParameter regParam = new SqlParameter { ParameterName = "@reg", Value = "%" + reg + "%" };
-            command.Parameters.Add(regParam);
-
-            try
+            Console.WriteLine("Дантисты высшей категории:");
+            var dentists = (from d in dc.Dentist
+                                    where d.CategoryID == 1
+                                    select $"{d.Name.Trim()} {d.Surname.Trim()}")
+                   .Distinct()
+                   .ToList();
+            foreach (var c in dentists)
             {
-                connection.Open();
-                var reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    WriteLine(reader[0]);
-                }
-                reader.Close();
+                Console.WriteLine(c);
             }
-            catch (Exception ex)
+
+            Console.WriteLine("\nВсе Дантисты:");
+            Table<Dentist> dents = dc.GetTable<Dentist>();
+            foreach (var c in dents)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine(c.Name.ToString().Trim() + " " + c.Surname.ToString().Trim());
             }
         }
     }
